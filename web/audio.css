@@ -5,19 +5,21 @@
     border-radius: 50%;
 }
 
+.color_loop_file {
+    fill: #0000BEC2 !important;
+}
+.color_loop_AudioList {
+    fill: #0000FF33 !important;
+}
+
 .replay-button {
     border-radius: 50%;
     transition: box-shadow 0.4s ease;
-    /* background: transparent; */
+    background: transparent;
 }
 
 .replay-button.playing {
     box-shadow: inset 0 0 0 2px #fe020214;
+	background: transparent;
 }
 
-.color_loop_file {
-    fill: rgb(115 0 113);
-}
-.color_loop_AudioList {
-    fill: #0000FF33;
-}
