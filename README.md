@@ -68,32 +68,3 @@ Since this is an add-on, keep in mind that this functionality won't work in Anki
 P.S. Oh, and I forgot to show an example of the window that appears when you click actions. Let's say it's useful to press pause and get information about the file length and whether the range "A-B" is specified.
 
 <img width="631" height="87" alt="image" src="https://github.com/user-attachments/assets/5dee94ba-2343-48a2-9f6d-b5dac64f85ca" />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Однако, скоростью управлять хорошо, но становится проблема когда аудио длиннее 10 секунд, тогда уже простая перемотка на 5 секунд вперед и назад не всегда удобна.
-
-
-
-
-
