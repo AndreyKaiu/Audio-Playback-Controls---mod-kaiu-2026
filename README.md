@@ -65,6 +65,9 @@ I wrote `class=muteAudio` without quotes. The key word here is `muteAudio`, and 
 
 Since this is an add-on, keep in mind that this functionality won't work in Anki Droid or anywhere else. But the more people want to use custom algorithms, the more likely it is that this Anki algorithm will become the standard, and then Anki Droid will implement it.
 
+P.S. Oh, and I forgot to show an example of the window that appears when you click actions. Let's say it's useful to press pause and get information about the file length and whether the range "A-B" is specified.
+
+<img width="631" height="87" alt="image" src="https://github.com/user-attachments/assets/5dee94ba-2343-48a2-9f6d-b5dac64f85ca" />
 
 
 
