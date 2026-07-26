@@ -25,7 +25,7 @@ from anki.utils import checksum, is_win, tmpdir
 
 
 
-ADDON_VERSION = "1.06"
+ADDON_VERSION = "1.1"
 config = mw.addonManager.getConfig(__name__)
 mw.addonManager.setWebExports(__name__, r"web/.*\.(css|js)")
 base_path = f"/_addons/{mw.addonManager.addonFromModule(__name__)}/web"
