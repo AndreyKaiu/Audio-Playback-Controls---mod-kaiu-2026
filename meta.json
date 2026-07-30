@@ -1,13 +1,10 @@
 {
     "name": "Audio Playback Controls - mod kaiu 2026",
-    "mod": 1785089057,
-    "conflicts": [
-        "control_playback", "312734862"
-    ],
-    
+    "mod": 1785443454,
     "min_point_version": 250902,
     "max_point_version": 260500,
     "branch_index": 0,
     "disabled": false,
+    "conflicts": ["312734862"],
     "update_enabled": true
 }
