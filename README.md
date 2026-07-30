@@ -68,3 +68,14 @@ Since this is an add-on, keep in mind that this functionality won't work in Anki
 P.S. Oh, and I forgot to show an example of the window that appears when you click actions. Let's say it's useful to press pause and get information about the file length and whether the range "A-B" is specified.
 
 <img width="631" height="87" alt="image" src="https://github.com/user-attachments/assets/5dee94ba-2343-48a2-9f6d-b5dac64f85ca" />
+
+#### VERSIONS
+- 1.3, date: 2026-07-30. Audio in the preview. The cue position and A-B range are saved for each file.
+- 1.2, date: 2026-07-27. Fixed a hook handler that could affect other addons.
+- 1.1, date: 2026-07-26. First release
+
+=========================
+
+**See my other addons and decks here:** [https://ankiweb.net/shared/by-author/1188253433](https://ankiweb.net/shared/by-author/1188253433) 
+
+=========================
