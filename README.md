@@ -69,6 +69,31 @@ P.S. Oh, and I forgot to show an example of the window that appears when you cli
 
 <img width="631" height="87" alt="image" src="https://github.com/user-attachments/assets/5dee94ba-2343-48a2-9f6d-b5dac64f85ca" />
 
+
+**Added since version 1.3, date: 2026-07-30**
+
+A menu option has been added to the preview by pressing the "M" key, allowing you to control audio from the preview.
+
+The cue position and range A-B are saved for each file.
+
+I show the pause in red.
+
+Added the ability to extend the A-B range by the length of the last setting in that range. Added the ability to jump to the beginning of a file or to another file (only if the file list is open, not if the user clicked a single file).
+
+Added the ability to extend the A-B range by the length of the last setting for that range. Added the ability to jump to the beginning of a file or to another file (only if the file list is open, not if the user clicked a single file). It's possible to jump to the beginning of the A-B range, as well as after it.
+
+Please note how hotkeys are set in the addon settings:
+
+```
+"go_to_bookmark_shortcut": [
+        "ctrl+,",
+        "9",
+        "ctrl+б"
+    ],
+```
+
+For convenience, I also entered the keystroke 9, and also at the very bottom is shown the combination for the Russian layout, since QT has a problem with assigning hotkeys if your language is not English and you use other keys.
+
 #### VERSIONS
 - 1.3, date: 2026-07-30. Audio in the preview. The cue position and A-B range are saved for each file.
 - 1.2, date: 2026-07-27. Fixed a hook handler that could affect other addons.
