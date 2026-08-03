@@ -95,6 +95,7 @@ Please note how hotkeys are set in the addon settings:
 For convenience, I also entered the keystroke 9, and also at the very bottom is shown the combination for the Russian layout, since QT has a problem with assigning hotkeys if your language is not English and you use other keys.
 
 #### VERSIONS
+- 1.4, date: 2026-08-03. Improved position accuracy. Bugs fixed.
 - 1.3, date: 2026-07-30. Audio in the preview. The cue position and A-B range are saved for each file.
 - 1.2, date: 2026-07-27. Fixed a hook handler that could affect other addons.
 - 1.1, date: 2026-07-26. First release
