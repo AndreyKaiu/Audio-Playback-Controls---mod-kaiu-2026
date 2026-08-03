@@ -5,10 +5,10 @@
     border-radius: 50%;
 }
 
-.color_loop_file {
+.replay-button.color_loop_file path {
     fill: #0000BEC2 !important;
 }
-.color_loop_AudioList {
+.replay-button.color_loop_AudioList circle {
     fill: #0000FF33 !important;
 }
 

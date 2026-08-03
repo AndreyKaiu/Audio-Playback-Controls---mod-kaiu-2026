@@ -25,7 +25,7 @@ from pathlib import Path
 from aqt.qt import QMenu, QCursor, Qt, QShortcut, QKeySequence, QApplication
 
 
-ADDON_VERSION = "1.3"
+ADDON_VERSION = "1.4"
 config = mw.addonManager.getConfig(__name__)
 mw.addonManager.setWebExports(__name__, r"web/.*\.(css|js)")
 base_path = f"/_addons/{mw.addonManager.addonFromModule(__name__)}/web"
@@ -96,7 +96,8 @@ def extract_muted_fileortts(html):
             if 'soundLink' in a.get('class', []):
                 src = a.get('data-fileortts')
                 if src:
-                    result.append(src)
+                    if not(src in result):
+                        result.append(src)
     return result
 
 
@@ -238,20 +239,30 @@ gui_hooks.av_player_will_play_tags.append(on_av_player_will_play_tags)
 
 
 
-mpv_loop_file = config["Replay 1 Audio"] # False 
-mpv_audio1_loop_count = config["audio1_loop_count"] #"0"
+mpv_loop_file = bool(config["Replay 1 Audio"]) # False 
+valcfg = config["audio1_loop_count"] # "0"
+try:
+    mpv_audio1_loop_count = int(valcfg) 
+except Exception:
+    mpv_audio1_loop_count = 100000 # inf
 action_audio1_loop_count = None
 
-mpv_loop_AudioList = config["Replay Audio-List"] # False 
-mpv_audio_list_loop_count = config["audio_list_loop_count"] #"0" 
+mpv_loop_AudioList = bool(config["Replay Audio-List"]) # False 
+valcfg = config["audio_list_loop_count"] # "0"
+try:
+    mpv_audio_list_loop_count = int(valcfg)
+except Exception:
+    mpv_audio_list_loop_count = 100000 # inf
+
 action_audio_list_loop_count = None
 
+ 
 
 def updateColorLoop():    
     global mpv_loop_file, mpv_loop_AudioList 
     # print("UPDATECOLORLOOP")
     if mpv_loop_AudioList and mpv_loop_file:
-        send_js_to_all_reviewers(f"if(window.color_loop_file_AND_AudioList) color_loop_file_AND_AudioList) window.color_loop_file_AND_AudioList();")  
+        send_js_to_all_reviewers(f"if(window.color_loop_file_AND_AudioList) window.color_loop_file_AND_AudioList();")  
     elif mpv_loop_AudioList:                                 
        send_js_to_all_reviewers(f"if(window.color_loop_AudioList) window.color_loop_AudioList();")
     elif mpv_loop_file:                
@@ -282,7 +293,7 @@ gui_hooks.webview_did_receive_js_message.append(on_pycmd_handler)
 original_pop_next = av_player._pop_next
 
 def patched_pop_next(self):
-    global _muted_fileortts, _current_filename
+    global _muted_fileortts, _current_filename, mpv_loop_AudioList
 
     while self._enqueued:
         
@@ -300,36 +311,60 @@ def patched_pop_next(self):
         # print("patched_pop_next: str(_current_filename)=" + str(_current_filename))
         # print("patched_pop_next: filename=" + filename)
 
+
+        if self.audio_list_loop_count is None:
+            aqt.sound.mpvManager.command("set_property", "ab-loop-a", "no")
+            aqt.sound.mpvManager.command("set_property", "ab-loop-b", "no")
+            aqt.sound.mpvManager.command("set_property", "ab-loop-count", 0)
+            try:
+                if mpv_loop_AudioList:
+                    # print("mpv_audio_list_loop_count:", str(mpv_audio_list_loop_count), " len(self._enqueued):", str(len(self._enqueued)))
+                    self.audio_list_loop_count = int(mpv_audio_list_loop_count) * len(self._enqueued)
+                else:
+                    self.audio_list_loop_count = 0
+            except Exception:
+                self.audio_list_loop_count = 0
+            # print("mpv_loop_AudioList=", str(mpv_loop_AudioList)," self.audio_list_loop_count=", str(self.audio_list_loop_count))
+
+
         
         if not self._is_user_click: # пользователь может кликать на любые файлы
             
             if filename is None or filename == "": # если это TTS который muteAudio
                 other_args = getattr(first, 'other_args', None)
-                if other_args is not None and any("muteAudio" in arg for arg in other_args):
+                if other_args is not None and any("muteAudio" in arg for arg in other_args):                    
                     # Найден аргумент, содержащий "muteAudio" – пропускаем
+                    if self.audio_list_loop_count is not None and self.audio_list_loop_count > 0:
+                        self.audio_list_loop_count -= 1
                     self._enqueued.pop(0)
                     continue
             
             # Если это временный файл (от TTS) – то берем из _current_filename до этого пришедший
             if _current_filename is not None and filename is not None and ("anki_temp" in filename or tmpdir() in filename):
                 filename = _current_filename
+                if filename and filename in _muted_fileortts:
+                    # Этот файл запрещён – удаляем его из очереди и пропускаем
+                    # print("Этот файл запрещён – удаляем его из очереди и пропускаем")
+                    if self.audio_list_loop_count is not None and self.audio_list_loop_count > 0:
+                        self.audio_list_loop_count -= 1
+                    self._enqueued.pop(0)
+                    continue
 
             # print("patched_pop_next; in _muted_fileortts: str(_current_filename)=" + str(_current_filename))
 
             if filename and filename in _muted_fileortts:
                 # Этот файл запрещён – удаляем его из очереди и пропускаем
                 # print("Этот файл запрещён – удаляем его из очереди и пропускаем")
+                if self.audio_list_loop_count is not None and self.audio_list_loop_count > 0:
+                    self.audio_list_loop_count -= 1
                 self._enqueued.pop(0)
                 continue
             
-        # Разрешённый файл – обрабатываем как обычно
-        if self.audio_list_loop_count is None:
-            try:
-                self.audio_list_loop_count = int(mpv_audio_list_loop_count) * len(self._enqueued)
-            except Exception:
-                self.audio_list_loop_count = 0
+        # Разрешённый файл – обрабатываем как обычно        
 
         if not mpv_loop_AudioList or len(self._enqueued) <= 1 or self.audio_list_loop_count is None:
+            if self.audio_list_loop_count is not None and self.audio_list_loop_count > 0:
+                self.audio_list_loop_count -= 1
             return self._enqueued.pop(0)
         else:
             if self.audio_list_loop_count > 0:
@@ -354,7 +389,7 @@ av_player._pop_next = types.MethodType(patched_pop_next, av_player)
 original_clear = av_player.clear_queue_and_maybe_interrupt
 
 def patched_clear_queue_and_maybe_interrupt(self):
-    global mpv_audio_list_loop_count, _is_user_click
+    global _is_user_click
     original_clear()
     self.audio_list_loop_count = None
     self._is_user_click = _is_user_click
@@ -384,12 +419,11 @@ def get_time_pos():
 def replay1AudioLoop():  
     global mpv_loop_file, mpv_loop_AudioList, mpv_audio1_loop_count
     # mw.reviewer.replayAudio() 
-    mpv_loop_file = not mpv_loop_file
-    mpv_audio1_loop_count = config["audio1_loop_count"] 
+    mpv_loop_file = not mpv_loop_file    
     
     try:        
         if mpv_loop_file:
-            str_ab_loop_count = config["audio1_loop_count"] 
+            str_ab_loop_count = str(config["audio1_loop_count"]) 
             aqt.sound.mpvManager.command("set_property", "ab-loop-count", str_ab_loop_count)
         else:
             str_ab_loop_count = "inf"        
@@ -431,13 +465,12 @@ def on_av_player_did_begin_playing(player, tag):
  
   
 def replayAudioListLoop():
-    global mpv_loop_AudioList, mpv_loop_file, mpv_audio_list_loop_count 
-    mpv_loop_AudioList = not mpv_loop_AudioList   
-    mpv_audio_list_loop_count = config["audio_list_loop_count"]
+    global mpv_loop_AudioList, mpv_loop_file
+    mpv_loop_AudioList = not mpv_loop_AudioList       
     
     try:        
         if mpv_loop_file:
-            str_ab_loop_count = config["audio1_loop_count"] 
+            str_ab_loop_count = str(config["audio1_loop_count"])
             aqt.sound.mpvManager.command("set_property", "ab-loop-count", str_ab_loop_count)    
         else:
             str_ab_loop_count = "inf"        
@@ -445,11 +478,11 @@ def replayAudioListLoop():
     except Exception:
         pass
     
-    
+    str_audio_list_loop_count = config["audio_list_loop_count"]
     if mpv_loop_AudioList:    
-        tooltip(f"<b><span style='color: red;'>ON.</span> Replay Audio-List (Loop:{mpv_audio_list_loop_count})</b>", period=3000)        
+        tooltip(f"<b><span style='color: red;'>ON.</span> Replay Audio-List (Loop:{str_audio_list_loop_count})</b>", period=3000)        
     else:
-        tooltip(f"<b><span style='color: blue;'>OFF.</span> Replay Audio-List (Loop:{mpv_audio_list_loop_count})</b>", period=3000)   
+        tooltip(f"<b><span style='color: blue;'>OFF.</span> Replay Audio-List (Loop:{str_audio_list_loop_count})</b>", period=3000)   
         
     updateColorLoop()
 
@@ -464,7 +497,7 @@ def set_A():
     
     str_ab_loop_count = ""    
     if mpv_loop_file:
-        str_ab_loop_count = config["audio1_loop_count"] 
+        str_ab_loop_count = str(config["audio1_loop_count"])
         aqt.sound.mpvManager.command("set_property", "ab-loop-count", str_ab_loop_count)    
     else:
         str_ab_loop_count = "inf"        
@@ -475,7 +508,7 @@ def set_A():
         if (mpv_time_pos_A - 0.5) >= 0:
             mpv_time_pos_A = mpv_time_pos_A - 0.5
         aqt.sound.mpvManager.command("set_property", "ab-loop-a", str(mpv_time_pos_A))        
-        if loop_b is None or loop_b == "no" or int(loop_b) < mpv_time_pos_A:            
+        if loop_b is None or loop_b == "no" or float(loop_b) < mpv_time_pos_A:            
             mpv_time_pos_B = duration - 0.1  
             aqt.sound.mpvManager.command("set_property", "ab-loop-b", str(mpv_time_pos_B))
         else:
@@ -513,7 +546,7 @@ def set_B():
         
     str_ab_loop_count = ""    
     if mpv_loop_file:
-        str_ab_loop_count = config["audio1_loop_count"] 
+        str_ab_loop_count = str(config["audio1_loop_count"])
         aqt.sound.mpvManager.command("set_property", "ab-loop-count", str_ab_loop_count)    
     else:
         str_ab_loop_count = "inf"        
@@ -524,7 +557,7 @@ def set_B():
         if (mpv_time_pos_B + 0.5) < duration:
             mpv_time_pos_B = mpv_time_pos_B + 0.5
         aqt.sound.mpvManager.command("set_property", "ab-loop-b", str(mpv_time_pos_B))        
-        if loop_a is None or loop_a == "no" or int(loop_a) > mpv_time_pos_B:            
+        if loop_a is None or loop_a == "no" or float(loop_a) > mpv_time_pos_B:            
             mpv_time_pos_A = 0
             aqt.sound.mpvManager.command("set_property", "ab-loop-a", str(mpv_time_pos_A))
         else:
@@ -729,7 +762,7 @@ def shift_AB_left():
          
         str_ab_loop_count = ""    
         if mpv_loop_file:
-            str_ab_loop_count = config["audio1_loop_count"] 
+            str_ab_loop_count = str(config["audio1_loop_count"])
             aqt.sound.mpvManager.command("set_property", "ab-loop-count", str_ab_loop_count)    
         else:
             str_ab_loop_count = "inf"        
@@ -812,7 +845,7 @@ def shift_AB_right():
          
         str_ab_loop_count = ""    
         if mpv_loop_file:
-            str_ab_loop_count = config["audio1_loop_count"] 
+            str_ab_loop_count = str(config["audio1_loop_count"])
             aqt.sound.mpvManager.command("set_property", "ab-loop-count", str_ab_loop_count)    
         else:
             str_ab_loop_count = "inf"        
@@ -897,7 +930,7 @@ def shift_A_left():
          
         str_ab_loop_count = ""    
         if mpv_loop_file:
-            str_ab_loop_count = config["audio1_loop_count"] 
+            str_ab_loop_count = str(config["audio1_loop_count"])
             aqt.sound.mpvManager.command("set_property", "ab-loop-count", str_ab_loop_count)    
         else:
             str_ab_loop_count = "inf"        
@@ -979,7 +1012,7 @@ def shift_B_right():
          
         str_ab_loop_count = ""    
         if mpv_loop_file:
-            str_ab_loop_count = config["audio1_loop_count"] 
+            str_ab_loop_count = str(config["audio1_loop_count"])
             aqt.sound.mpvManager.command("set_property", "ab-loop-count", str_ab_loop_count)    
         else:
             str_ab_loop_count = "inf"        
@@ -1064,7 +1097,7 @@ def shift_A_right():
          
         str_ab_loop_count = ""    
         if mpv_loop_file:
-            str_ab_loop_count = config["audio1_loop_count"] 
+            str_ab_loop_count = str(config["audio1_loop_count"])
             aqt.sound.mpvManager.command("set_property", "ab-loop-count", str_ab_loop_count)    
         else:
             str_ab_loop_count = "inf"        
@@ -1146,7 +1179,7 @@ def shift_B_left():
          
         str_ab_loop_count = ""    
         if mpv_loop_file:
-            str_ab_loop_count = config["audio1_loop_count"] 
+            str_ab_loop_count = str(config["audio1_loop_count"])
             aqt.sound.mpvManager.command("set_property", "ab-loop-count", str_ab_loop_count)    
         else:
             str_ab_loop_count = "inf"        
@@ -1225,14 +1258,14 @@ audio_seek_N = None
 def seek_backward_N() -> None:
     global audio_seek_N
     if audio_seek_N is None:
-        audio_seek_N = int(config["audio_seek_N"])
+        audio_seek_N = float(config["audio_seek_N"])
     av_player.seek_relative(-audio_seek_N)
     gui_hooks.audio_did_seek_relative(mw.web, -audio_seek_N)
 
 def seek_forward_N() -> None:
     global audio_seek_N
     if audio_seek_N is None:
-        audio_seek_N = int(config["audio_seek_N"])
+        audio_seek_N = float(config["audio_seek_N"])
     av_player.seek_relative(audio_seek_N)
     gui_hooks.audio_did_seek_relative(mw.web, audio_seek_N)       
 
@@ -1627,7 +1660,7 @@ def add_menu_items(viewer: Reviewer, menu: QMenu) -> None:
         qconnect(action.triggered, cb)
 
     # Replay 1 Audio
-    display_label = "Replay 1 Audio (Loop:" + config["audio1_loop_count"] + ")"     
+    display_label = "Replay 1 Audio (Loop:" + str(config["audio1_loop_count"]) + ")"     
     sc_list = normalize_shortcuts(config["audio1_Replay_shortcut"])
     if len(sc_list) > 1:
         display_label = f"{display_label} → [{', '.join(sc_list[1:])}]"
@@ -1641,7 +1674,7 @@ def add_menu_items(viewer: Reviewer, menu: QMenu) -> None:
     qconnect(action_audio1_loop_count.triggered, replay1AudioLoop)
 
     # Replay Audio-List
-    display_label = "Replay Audio-List (Loop:" + config["audio_list_loop_count"] + ")" 
+    display_label = "Replay Audio-List (Loop:" + str(config["audio_list_loop_count"]) + ")" 
     sc_list = normalize_shortcuts(config["audio_list_Replay_shortcut"])
     if len(sc_list) > 1:
         display_label = f"{display_label}  [{', '.join(sc_list[1:])}]"
@@ -1775,7 +1808,7 @@ def _start_progress_updater():
     if _timer is not None:
         return
     # Обновляем не реже, чем 1 секунду
-    _timer = mw.progress.timer(500, _update_progress_safe, repeat=True)
+    _timer = mw.progress.timer(500, _update_progress_safe, repeat=True, parent=mw)
 
 
 def _update_progress_safe():
